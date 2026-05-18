@@ -15,9 +15,11 @@ log()  { echo -e "\033[0;32m🧹 [CLEANUP]\033[0m $*"; }
 
 # Unmount any stuck mounts
 for mnt in tmp sys proc dev/pts dev; do
-    mountpoint -q "$CHROOT_DIR/$mnt" 2>/dev/null && \
-        umount -lf "$CHROOT_DIR/$mnt" && \
-        log "Unmounted $mnt" || true
+    if mountpoint -q "$CHROOT_DIR/$mnt" 2>/dev/null; then
+        if umount -lf "$CHROOT_DIR/$mnt"; then
+            log "Unmounted $mnt"
+        fi
+    fi
 done
 
 if [[ "${1:-}" == "--full" ]]; then

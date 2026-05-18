@@ -43,6 +43,7 @@ ISO_NAME="baconos-${BACONOS_VERSION}-amd64.iso"
 ISO_LABEL="BaconOS ${BACONOS_VERSION}"
 
 CLEAN_BUILD=false
+# shellcheck disable=SC2034
 NO_CACHE=false
 
 # ── Parse args ────────────────────────────────────────────────────────────────
@@ -139,7 +140,9 @@ configure_chroot() {
 
 cleanup_mounts() {
     for mnt in tmp sys proc dev/pts dev; do
-        mountpoint -q "$CHROOT_DIR/$mnt" 2>/dev/null && umount -lf "$CHROOT_DIR/$mnt" || true
+        if mountpoint -q "$CHROOT_DIR/$mnt" 2>/dev/null; then
+            umount -lf "$CHROOT_DIR/$mnt" || true
+        fi
     done
 }
 
@@ -189,21 +192,22 @@ build_iso() {
     log "squashfs created ✅"
 
     # Manifest
+    # shellcheck disable=SC2016
     chroot "$CHROOT_DIR" dpkg-query -W --showformat='${Package} ${Version}\n' \
         > "$ISO_DIR/casper/filesystem.manifest"
 
     # Copy kernel and initrd from chroot
     log "Copying kernel and initrd..."
-    KERNEL=$(ls "$CHROOT_DIR/boot/vmlinuz-"* 2>/dev/null | sort -V | tail -1)
-    INITRD=$(ls "$CHROOT_DIR/boot/initrd.img-"* 2>/dev/null | sort -V | tail -1)
+    KERNEL=$(find "$CHROOT_DIR/boot" -maxdepth 1 -name "vmlinuz-*" 2>/dev/null | sort -V | tail -n 1)
+    INITRD=$(find "$CHROOT_DIR/boot" -maxdepth 1 -name "initrd.img-*" 2>/dev/null | sort -V | tail -n 1)
 
     [[ -z "$KERNEL" ]] && error "No kernel found in chroot"
     [[ -z "$INITRD" ]] && error "No initrd found in chroot"
 
     cp "$KERNEL" "$ISO_DIR/casper/vmlinuz"
     cp "$INITRD" "$ISO_DIR/casper/initrd"
-    log "Kernel: $(basename $KERNEL)"
-    log "Initrd: $(basename $INITRD)"
+    log "Kernel: $(basename "$KERNEL")"
+    log "Initrd: $(basename "$INITRD")"
 
     # Write GRUB config
     write_grub_config
