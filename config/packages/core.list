@@ -1,0 +1,57 @@
+# BaconOS Core Package List
+# These packages are always installed in BaconOS
+
+# System
+systemd
+dbus
+udev
+util-linux
+coreutils
+procps
+bash
+zsh
+sudo
+locales
+tzdata
+
+# Network
+network-manager
+NetworkManager
+curl
+wget
+ca-certificates
+openssh-client
+
+# Hardware
+linux-image-generic
+linux-firmware
+initramfs-tools
+casper
+lupin-casper
+mesa-vulkan-drivers
+alsa-base
+alsa-utils
+bluez
+bluetooth
+
+# Desktop
+gnome-shell
+gnome-session
+gnome-control-center
+gnome-tweaks
+gdm3
+mutter
+nautilus
+gnome-terminal
+eog
+evince
+
+# Developer basics
+build-essential
+git
+python3
+python3-pip
+vim
+nano
+htop
+neofetch

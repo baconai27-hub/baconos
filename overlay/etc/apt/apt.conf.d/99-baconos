@@ -1,0 +1,45 @@
+# BaconOS APT Configuration
+# /etc/apt/apt.conf.d/99-baconos
+
+# ── Download speed & reliability ──────────────────────────────────────────────
+# Parallel downloads for faster installs
+APT::Acquire::Queue-Mode "host";
+APT::Acquire::Retries "3";
+APT::Acquire::http::Dl-Limit "0";
+APT::Acquire::http::Pipeline-Depth "10";
+
+# Prefer IPv4 (more reliable on most networks)
+Acquire::ForceIPv4 "true";
+
+# ── Install behaviour ─────────────────────────────────────────────────────────
+# Don't install recommended packages by default (keep system lean)
+APT::Install-Recommends "false";
+APT::Install-Suggests "false";
+
+# Auto-fix broken dependencies
+APT::Get::Fix-Broken "true";
+
+# Assume yes to prompts in scripts
+# (do NOT enable globally — only use -y flag when needed)
+
+# ── Cache settings ─────────────────────────────────────────────────────────────
+# Keep downloaded debs for a week
+APT::Archives::MaxAge "7";
+APT::Archives::MinAge "2";
+APT::Archives::MaxSize "2000";   # MB
+
+# ── Security ──────────────────────────────────────────────────────────────────
+APT::Sandbox::User "root";
+
+# ── dpkg settings ─────────────────────────────────────────────────────────────
+DPkg::Options {
+   "--force-confold";    # Keep existing config files when upgrading
+   "--force-confdef";    # Use package default for new config files
+}
+
+# ── Progress bars ─────────────────────────────────────────────────────────────
+DPkg::Progress-Fancy "1";
+APT::Color "1";
+
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+APT::Clean-Installed "false";

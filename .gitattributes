@@ -1,0 +1,28 @@
+# BaconOS .gitattributes
+# Force LF line endings for all shell scripts and Linux config files
+# This is critical — CRLF line endings will break scripts on Linux
+
+# Shell scripts — always LF
+*.sh        text eol=lf
+build/build.sh text eol=lf
+build/*.sh  text eol=lf
+
+# Linux config files — always LF
+overlay/**  text eol=lf
+config/**   text eol=lf
+Makefile    text eol=lf
+Dockerfile  text eol=lf
+.github/**  text eol=lf
+
+# Markdown and text — LF
+*.md        text eol=lf
+*.txt       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.conf      text eol=lf
+*.list      text eol=lf
+
+# Binary files — no conversion
+*.png       binary
+*.jpg       binary
+*.iso       binary

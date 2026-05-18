@@ -1,0 +1,138 @@
+#cloud-config
+# =============================================================================
+# BaconOS Autoinstall Configuration
+# Used by Ubuntu's subiquity installer for automated/scripted installs
+# =============================================================================
+# Usage: Boot ISO with kernel param: autoinstall ds=nocloud;s=/cdrom/config/autoinstall/
+# =============================================================================
+
+autoinstall:
+  version: 1
+
+  # ── Identity ────────────────────────────────────────────────────────────────
+  identity:
+    hostname: baconos
+    realname: Bacon User
+    username: bacon
+    password: "$6$rounds=4096$Crispy$..."  # Change this! Use: openssl passwd -6 yourpassword
+
+  # ── Locale ──────────────────────────────────────────────────────────────────
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+    variant: ""
+
+  # ── Network ─────────────────────────────────────────────────────────────────
+  network:
+    network:
+      version: 2
+      ethernets:
+        any:
+          match:
+            name: "en*"
+          dhcp4: true
+          dhcp6: true
+      wifis: {}
+
+  # ── Storage ─────────────────────────────────────────────────────────────────
+  storage:
+    layout:
+      name: lvm
+      match:
+        size: largest
+    swap:
+      size: 0   # BaconOS uses zram swap instead
+
+  # ── APT ─────────────────────────────────────────────────────────────────────
+  apt:
+    geoip: true
+    preserve_sources_list: false
+    primary:
+      - arches: [amd64, i386]
+        uri: http://archive.ubuntu.com/ubuntu
+    sources:
+      baconos-ppa:
+        source: "deb [trusted=yes] https://baconos.github.io/apt stable main"
+
+  # ── Packages ────────────────────────────────────────────────────────────────
+  packages:
+    - ubuntu-minimal
+    - ubuntu-standard
+    - gnome-shell
+    - gnome-session
+    - gdm3
+    - nautilus
+    - firefox
+    - libreoffice
+    - vlc
+    - git
+    - zsh
+    - neofetch
+    - htop
+    - btop
+    - flatpak
+    - gnome-software-plugin-flatpak
+    - kitty
+    - build-essential
+    - python3-pip
+    - curl
+    - wget
+    - timeshift
+
+  # ── Late commands ────────────────────────────────────────────────────────────
+  late-commands:
+    # Set default shell to zsh
+    - curtin in-target -- chsh -s /usr/bin/zsh bacon
+
+    # Apply BaconOS OS identity
+    - |
+      curtin in-target -- bash -c "cat > /etc/os-release <<'EOF'
+      NAME=\"BaconOS\"
+      VERSION=\"1.0 (Sizzle)\"
+      ID=baconos
+      ID_LIKE=ubuntu
+      PRETTY_NAME=\"BaconOS 1.0 Sizzle\"
+      VERSION_ID=\"1.0\"
+      HOME_URL=\"https://baconos.github.io\"
+      LOGO=baconos-logo
+      EOF"
+
+    # Set hostname
+    - curtin in-target -- bash -c "echo baconos > /etc/hostname"
+
+    # Add Flathub
+    - curtin in-target -- flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+    # Enable zram swap
+    - curtin in-target -- bash -c "
+        apt-get install -y zram-config 2>/dev/null ||
+        apt-get install -y systemd-zram-generator 2>/dev/null || true"
+
+    # Install Oh My Zsh for default user
+    - curtin in-target --
+        sudo -u bacon bash -c "
+          export RUNZSH=no CHSH=no;
+          sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" -- --unattended
+        " || true
+
+    # Copy BaconOS configs
+    - cp -r /cdrom/overlay/etc/. /target/etc/   || true
+    - cp -r /cdrom/overlay/home/. /target/home/  || true
+
+    # Final message
+    - echo "🥓 BaconOS installation complete! Enjoy your crispy new OS."
+
+  # ── User data ────────────────────────────────────────────────────────────────
+  user-data:
+    disable_root: false
+
+  # ── SSH ──────────────────────────────────────────────────────────────────────
+  ssh:
+    install-server: false
+    allow-pw: true
+
+  # ── Timezone ─────────────────────────────────────────────────────────────────
+  timezone: UTC
+
+  # ── Updates ─────────────────────────────────────────────────────────────────
+  updates: security

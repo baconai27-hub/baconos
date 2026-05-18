@@ -1,0 +1,41 @@
+# BaconOS GRUB configuration
+# /etc/default/grub
+
+# ── Boot menu ─────────────────────────────────────────────────────────────────
+GRUB_DEFAULT=0
+GRUB_TIMEOUT=8
+GRUB_TIMEOUT_STYLE=menu
+GRUB_HIDDEN_TIMEOUT_QUIET=false
+
+# ── BaconOS theme ─────────────────────────────────────────────────────────────
+GRUB_THEME="/boot/grub/themes/baconos/theme.txt"
+GRUB_BACKGROUND="/boot/grub/themes/baconos/background.png"
+GRUB_GFXMODE="1920x1080,1280x720,auto"
+GRUB_GFXPAYLOAD_LINUX=keep
+GRUB_COLOR_NORMAL="white/black"
+GRUB_COLOR_HIGHLIGHT="black/yellow"
+
+# ── Kernel command line ────────────────────────────────────────────────────────
+# quiet splash      — silent boot with Plymouth splash
+# loglevel=3        — only show errors on console
+# nowatchdog        — disable watchdog for faster boot
+# mitigations=auto  — keep CPU mitigations (security)
+GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 nowatchdog mitigations=auto udev.log_level=3"
+GRUB_CMDLINE_LINUX=""
+
+# ── Distributor ───────────────────────────────────────────────────────────────
+GRUB_DISTRIBUTOR="BaconOS"
+
+# ── Recovery menu ─────────────────────────────────────────────────────────────
+GRUB_DISABLE_RECOVERY=false
+
+# ── OS Prober (detect Windows/other Linux installs) ───────────────────────────
+GRUB_DISABLE_OS_PROBER=false
+
+# ── EFI ───────────────────────────────────────────────────────────────────────
+# GRUB_EFI_NATIVE_VARIABLES is set automatically
+
+# ── Serial console (for headless/server) ─────────────────────────────────────
+# Uncomment to enable serial console:
+# GRUB_TERMINAL="console serial"
+# GRUB_SERIAL_COMMAND="serial --speed=115200 --unit=0 --word=8 --parity=no --stop=1"

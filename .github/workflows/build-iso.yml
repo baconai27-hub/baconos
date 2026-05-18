@@ -1,0 +1,155 @@
+name: BaconOS ISO Build
+
+on:
+  push:
+    branches: [main, develop]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'BaconOS version string'
+        required: false
+        default: '1.0-dev'
+
+env:
+  BACONOS_VERSION: ${{ github.event.inputs.version || '1.0-dev' }}
+
+jobs:
+  # ── Lint & validate scripts ─────────────────────────────────────────────────
+  lint:
+    name: Lint Shell Scripts
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint build scripts
+        run: |
+          shellcheck build/build.sh
+          shellcheck build/chroot-setup.sh
+          shellcheck build/cleanup.sh
+          shellcheck overlay/usr/bin/bacon
+          shellcheck overlay/usr/lib/baconos/*.sh
+          echo "✅ All scripts passed shellcheck"
+
+  # ── Validate YAML configs ───────────────────────────────────────────────────
+  validate-config:
+    name: Validate Configuration Files
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Validate autoinstall config
+        run: |
+          yamllint config/autoinstall/user-data
+          echo "✅ Autoinstall config is valid YAML"
+
+  # ── Build the ISO ───────────────────────────────────────────────────────────
+  build-iso:
+    name: Build BaconOS ISO
+    runs-on: ubuntu-24.04
+    needs: [lint, validate-config]
+    # Only build on main branch pushes and tags (not PRs — too slow/expensive)
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            debootstrap squashfs-tools xorriso mtools \
+            grub-pc-bin grub-efi-amd64-bin \
+            wget curl ca-certificates imagemagick
+
+      - name: Set build version
+        run: |
+          echo "Building BaconOS $BACONOS_VERSION"
+          sed -i "s/BACONOS_VERSION=\"1.0\"/BACONOS_VERSION=\"$BACONOS_VERSION\"/" build/build.sh
+
+      - name: Build ISO
+        run: sudo bash build/build.sh
+        timeout-minutes: 90
+
+      - name: Verify ISO
+        run: |
+          ISO="output/baconos-$BACONOS_VERSION-amd64.iso"
+          ls -lh "$ISO"
+          file "$ISO"
+          echo "SHA256: $(sha256sum $ISO)"
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: baconos-${{ env.BACONOS_VERSION }}-amd64
+          path: |
+            output/baconos-*.iso
+            output/baconos-*.sha256
+            output/baconos-*.md5
+          retention-days: 14
+
+  # ── Create GitHub Release ───────────────────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-24.04
+    needs: build-iso
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: baconos-${{ env.BACONOS_VERSION }}-amd64
+          path: output/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "🥓 BaconOS ${{ env.BACONOS_VERSION }}"
+          body: |
+            ## 🥓 BaconOS ${{ env.BACONOS_VERSION }} "Sizzle"
+
+            A crispy Ubuntu-based Linux distribution built for developers and power users.
+
+            ### 📥 Download
+            - `baconos-${{ env.BACONOS_VERSION }}-amd64.iso` — Main ISO (burn to USB or boot in VM)
+
+            ### ✅ Verify
+            ```bash
+            sha256sum -c baconos-${{ env.BACONOS_VERSION }}-amd64.iso.sha256
+            ```
+
+            ### 🚀 Quick Start
+            ```bash
+            # Flash to USB (Linux/macOS)
+            sudo dd if=baconos-${{ env.BACONOS_VERSION }}-amd64.iso of=/dev/sdX bs=4M status=progress
+
+            # Test in QEMU
+            qemu-system-x86_64 -m 4G -cdrom baconos-${{ env.BACONOS_VERSION }}-amd64.iso -boot d
+            ```
+
+            ### 🔑 Live session credentials
+            | User | Password |
+            |------|----------|
+            | bacon | sizzle |
+            | root | crispy |
+          files: |
+            output/baconos-*.iso
+            output/baconos-*.sha256
+            output/baconos-*.md5
+          draft: false
+          prerelease: ${{ contains(env.BACONOS_VERSION, 'dev') || contains(env.BACONOS_VERSION, 'rc') }}

@@ -1,0 +1,13 @@
+[Unit]
+Description=BaconOS ZRAM Swap Configuration
+DefaultDependencies=no
+After=local-fs.target
+Before=swap.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/baconos/setup-zram.sh
+
+[Install]
+WantedBy=sysinit.target

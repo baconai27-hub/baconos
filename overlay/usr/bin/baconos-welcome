@@ -1,0 +1,340 @@
+#!/usr/bin/env python3
+# =============================================================================
+# BaconOS Welcome App
+# A GTK4/Libadwaita welcome dialog shown on first boot
+# Install to: /usr/bin/baconos-welcome
+# Desktop file: /usr/share/applications/baconos-welcome.desktop
+# =============================================================================
+
+import gi
+import os
+import subprocess
+import sys
+import threading
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Gtk, Adw, GLib, Gdk, Gio
+
+APP_ID = "io.baconos.Welcome"
+APP_VERSION = "1.0"
+APP_CODENAME = "Sizzle"
+
+CSS = """
+.welcome-header {
+    background: linear-gradient(135deg, #0d0805 0%, #1a0e04 50%, #2a1505 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 32px;
+}
+
+.welcome-title {
+    font-size: 36px;
+    font-weight: 900;
+    color: #ff8c00;
+    text-shadow: 0 0 20px rgba(255, 140, 0, 0.5);
+}
+
+.welcome-subtitle {
+    font-size: 16px;
+    color: #c8a870;
+    margin-top: 4px;
+}
+
+.welcome-version {
+    font-size: 12px;
+    color: #7a5830;
+    margin-top: 8px;
+}
+
+.step-card {
+    background-color: rgba(255, 140, 0, 0.06);
+    border: 1px solid rgba(255, 140, 0, 0.2);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 4px 0;
+    transition: background 200ms ease;
+}
+
+.step-card:hover {
+    background-color: rgba(255, 140, 0, 0.12);
+    border-color: rgba(255, 140, 0, 0.4);
+}
+
+.step-icon {
+    font-size: 28px;
+    min-width: 48px;
+}
+
+.step-title {
+    font-weight: 700;
+    font-size: 14px;
+    color: #e8d5b7;
+}
+
+.step-desc {
+    font-size: 12px;
+    color: #9a8060;
+    margin-top: 2px;
+}
+
+.action-row {
+    margin: 4px 0;
+}
+
+.primary-btn {
+    background-color: #ff8c00;
+    color: #0d0805;
+    font-weight: 700;
+    border-radius: 8px;
+    padding: 10px 24px;
+}
+
+.primary-btn:hover {
+    background-color: #ffa030;
+}
+
+.secondary-btn {
+    border: 1px solid rgba(255, 140, 0, 0.4);
+    color: #ff8c00;
+    border-radius: 8px;
+    padding: 10px 24px;
+}
+
+.secondary-btn:hover {
+    background-color: rgba(255, 140, 0, 0.1);
+}
+"""
+
+
+class WelcomePage(Gtk.Box):
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+
+        # ── Header ─────────────────────────────────────────────────────────────
+        header = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        header.add_css_class("welcome-header")
+        header.set_halign(Gtk.Align.CENTER)
+
+        emoji = Gtk.Label(label="🥓")
+        emoji.set_css_classes([])
+        emoji_attrs = emoji.get_attributes() or None
+        import pango_attrs := __import__("gi.repository.Pango", fromlist=["AttrList", "AttrSize"])
+        emoji.set_markup('<span font="48">🥓</span>')
+
+        title = Gtk.Label(label=f"Welcome to BaconOS")
+        title.add_css_class("welcome-title")
+        title.set_halign(Gtk.Align.CENTER)
+
+        subtitle = Gtk.Label(label="Stay crispy. Stay curious.")
+        subtitle.add_css_class("welcome-subtitle")
+        subtitle.set_halign(Gtk.Align.CENTER)
+
+        version = Gtk.Label(label=f"Version {APP_VERSION} \"{APP_CODENAME}\" — Based on Ubuntu 24.04 LTS")
+        version.add_css_class("welcome-version")
+        version.set_halign(Gtk.Align.CENTER)
+
+        header.append(title)
+        header.append(subtitle)
+        header.append(version)
+        self.append(header)
+
+        # ── Content ────────────────────────────────────────────────────────────
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content.set_margin_top(24)
+        content.set_margin_bottom(24)
+        content.set_margin_start(24)
+        content.set_margin_end(24)
+
+        steps = [
+            ("🔄", "Update Your System",
+             "Keep BaconOS fresh with the latest packages",
+             ["bacon", "update"]),
+            ("🎨", "Customize Your Desktop",
+             "Open GNOME Settings to personalize your experience",
+             ["gnome-control-center"]),
+            ("📦", "Explore Apps",
+             "Install apps from Flathub or the Software Center",
+             ["gnome-software"]),
+            ("🩺", "Run System Doctor",
+             "Check your system health with BaconOS Doctor",
+             ["bash", "-c", "kitty bash -c 'bacon doctor; exec bash'"]),
+        ]
+
+        for icon, title_text, desc_text, cmd in steps:
+            row = self._make_step_row(icon, title_text, desc_text, cmd)
+            content.append(row)
+
+        self.append(content)
+
+    def _make_step_row(self, icon, title_text, desc_text, cmd):
+        btn = Gtk.Button()
+        btn.add_css_class("step-card")
+        btn.set_has_frame(False)
+
+        inner = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=16)
+        inner.set_valign(Gtk.Align.CENTER)
+
+        icon_lbl = Gtk.Label()
+        icon_lbl.set_markup(f'<span font="28">{icon}</span>')
+        icon_lbl.add_css_class("step-icon")
+        inner.append(icon_lbl)
+
+        text_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        text_box.set_hexpand(True)
+
+        title_lbl = Gtk.Label(label=title_text)
+        title_lbl.add_css_class("step-title")
+        title_lbl.set_halign(Gtk.Align.START)
+        text_box.append(title_lbl)
+
+        desc_lbl = Gtk.Label(label=desc_text)
+        desc_lbl.add_css_class("step-desc")
+        desc_lbl.set_halign(Gtk.Align.START)
+        text_box.append(desc_lbl)
+
+        inner.append(text_box)
+
+        arrow = Gtk.Label(label="›")
+        arrow.set_markup('<span color="#ff8c00" font="20">›</span>')
+        inner.append(arrow)
+
+        btn.set_child(inner)
+        btn.connect("clicked", lambda b, c=cmd: self._run_cmd(c))
+        return btn
+
+    def _run_cmd(self, cmd):
+        try:
+            subprocess.Popen(cmd, start_new_session=True)
+        except Exception as e:
+            print(f"Failed to run {cmd}: {e}", file=sys.stderr)
+
+
+class AboutPage(Gtk.Box):
+    def __init__(self):
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        self.set_margin_top(24)
+        self.set_margin_bottom(24)
+        self.set_margin_start(24)
+        self.set_margin_end(24)
+        self.set_valign(Gtk.Align.CENTER)
+        self.set_halign(Gtk.Align.CENTER)
+
+        logo = Gtk.Label()
+        logo.set_markup('<span font="64">🥓</span>')
+
+        name = Gtk.Label(label="BaconOS")
+        name.add_css_class("welcome-title")
+        name.set_halign(Gtk.Align.CENTER)
+
+        info_lines = [
+            f"Version {APP_VERSION} \"{APP_CODENAME}\"",
+            "Based on Ubuntu 24.04 LTS (Noble Numbat)",
+            "Desktop: GNOME 46 with BaconShell theme",
+            "Kernel: Linux 6.8 (mainline)",
+            "",
+            "© 2025 BaconOS Project",
+            "Released under the MIT License",
+        ]
+
+        for line in info_lines:
+            lbl = Gtk.Label(label=line)
+            lbl.set_halign(Gtk.Align.CENTER)
+            if not line:
+                lbl.set_margin_top(8)
+            self.append(lbl)
+
+        self.prepend(name)
+        self.prepend(logo)
+
+
+class BaconOSWelcome(Adw.Application):
+    def __init__(self):
+        super().__init__(application_id=APP_ID,
+                         flags=Gio.ApplicationFlags.FLAGS_NONE)
+        self.connect("activate", self.on_activate)
+
+    def on_activate(self, app):
+        # Load CSS
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_data(CSS.encode())
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        # Main window
+        self.win = Adw.ApplicationWindow(application=self)
+        self.win.set_title("Welcome to BaconOS")
+        self.win.set_default_size(600, 700)
+        self.win.set_resizable(False)
+
+        # Header bar
+        headerbar = Adw.HeaderBar()
+        headerbar.set_show_end_title_buttons(True)
+
+        # View switcher
+        view_stack = Adw.ViewStack()
+        view_switcher = Adw.ViewSwitcher()
+        view_switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        view_switcher.set_stack(view_stack)
+        headerbar.set_title_widget(view_switcher)
+
+        # Pages
+        welcome_page = WelcomePage()
+        view_stack.add_titled_with_icon(
+            welcome_page, "welcome", "Welcome", "go-home-symbolic"
+        )
+
+        about_page = AboutPage()
+        view_stack.add_titled_with_icon(
+            about_page, "about", "About", "help-about-symbolic"
+        )
+
+        # Bottom bar with action buttons
+        bottom_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        bottom_bar.set_halign(Gtk.Align.CENTER)
+        bottom_bar.set_margin_top(8)
+        bottom_bar.set_margin_bottom(16)
+
+        no_show_btn = Gtk.CheckButton(label="Don't show this on startup")
+        no_show_btn.connect("toggled", self.on_no_show_toggled)
+        bottom_bar.append(no_show_btn)
+
+        close_btn = Gtk.Button(label="Get Started →")
+        close_btn.add_css_class("primary-btn")
+        close_btn.add_css_class("suggested-action")
+        close_btn.connect("clicked", lambda b: self.win.close())
+        bottom_bar.append(close_btn)
+
+        # Layout
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        toolbar_view = Adw.ToolbarView()
+        toolbar_view.add_top_bar(headerbar)
+        toolbar_view.set_content(view_stack)
+        toolbar_view.add_bottom_bar(bottom_bar)
+
+        self.win.set_content(toolbar_view)
+        self.win.present()
+
+    def on_no_show_toggled(self, btn):
+        flag = os.path.expanduser("~/.config/baconos/no-welcome")
+        if btn.get_active():
+            os.makedirs(os.path.dirname(flag), exist_ok=True)
+            open(flag, "w").close()
+        elif os.path.exists(flag):
+            os.remove(flag)
+
+
+def main():
+    # Don't show if user opted out
+    flag = os.path.expanduser("~/.config/baconos/no-welcome")
+    if os.path.exists(flag) and "--force" not in sys.argv:
+        sys.exit(0)
+
+    app = BaconOSWelcome()
+    sys.exit(app.run(sys.argv))
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to BaconOS
+GenericName=Welcome Screen
+Comment=Get started with BaconOS
+Exec=/usr/bin/baconos-welcome
+Icon=baconos-logo
+Terminal=false
+Categories=GNOME;GTK;Settings;
+Keywords=welcome;start;baconos;setup;
+StartupNotify=true
+StartupWMClass=BaconOS-Welcome
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5
+X-Ubuntu-Gettext-Domain=baconos

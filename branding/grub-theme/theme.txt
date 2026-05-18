@@ -1,0 +1,83 @@
+# =============================================================================
+# BaconOS GRUB Theme
+# Place this directory at: /boot/grub/themes/baconos/
+# Then set: GRUB_THEME="/boot/grub/themes/baconos/theme.txt"
+# =============================================================================
+
+# ── Global properties ──────────────────────────────────────────────────────────
+title-text: ""
+desktop-color: "#0d0805"
+desktop-image: "background.png"
+terminal-font: "Inter Regular 13"
+
+# ── Boot menu ──────────────────────────────────────────────────────────────────
++ boot_menu {
+    left   = 10%
+    top    = 20%
+    width  = 80%
+    height = 55%
+
+    item_font          = "Inter Regular 13"
+    item_color         = "#c8b89a"
+    selected_item_font = "Inter Bold 14"
+    selected_item_color= "#ff8c00"
+
+    icon_width  = 32
+    icon_height = 32
+    item_height = 48
+    item_padding = 12
+    item_spacing = 4
+
+    item_pixmap_style  = "boot_menu_item_bg*.png"
+    selected_item_pixmap_style = "boot_menu_item_selected*.png"
+
+    scrollbar = false
+}
+
+# ── Title / logo area ──────────────────────────────────────────────────────────
++ label {
+    left   = 10%
+    top    = 8%
+    align  = center
+    id     = "__title__"
+    text   = "BaconOS 1.0 \"Sizzle\""
+    font   = "Inter Bold 28"
+    color  = "#ff8c00"
+}
+
++ label {
+    left  = 10%
+    top   = 13.5%
+    align = center
+    text  = "Select an option to boot"
+    font  = "Inter Regular 12"
+    color = "#7a6040"
+}
+
+# ── Progress bar ───────────────────────────────────────────────────────────────
++ progress_bar {
+    id             = "__timeout__"
+    left           = 25%
+    top            = 79%
+    width          = 50%
+    height         = 4
+
+    fg_color       = "#ff8c00"
+    bg_color       = "#2a1a08"
+    border_color   = "#3a2a10"
+
+    text_color     = "#c8b89a"
+    font           = "Inter Regular 11"
+    text           = "Booting in %d seconds"
+    align          = center
+}
+
+# ── Version label ──────────────────────────────────────────────────────────────
++ label {
+    left  = 90%
+    top   = 95%
+    text  = "BaconOS 1.0"
+    font  = "Inter Regular 10"
+    color = "#3a2a10"
+    align = right
+}

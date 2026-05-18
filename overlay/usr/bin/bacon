@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# =============================================================================
+# bacon — BaconOS System Management CLI
+# A friendly all-in-one system tool
+# =============================================================================
+# Usage: bacon <command> [options]
+# =============================================================================
+
+set -euo pipefail
+
+# ── Colors ────────────────────────────────────────────────────────────────────
+RED='\033[0;31m'
+GRN='\033[0;32m'
+YLW='\033[1;33m'
+BLU='\033[0;34m'
+MAG='\033[0;35m'
+CYN='\033[0;36m'
+RST='\033[0m'
+BOLD='\033[1m'
+
+BACONOS_VERSION="1.0"
+BACONOS_CODENAME="Sizzle"
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+ok()    { echo -e "${GRN}✅${RST} $*"; }
+fail()  { echo -e "${RED}❌${RST} $*" >&2; }
+info()  { echo -e "${CYN}ℹ️ ${RST} $*"; }
+warn()  { echo -e "${YLW}⚠️ ${RST} $*"; }
+step()  { echo -e "${MAG}➜${RST}  ${BOLD}$*${RST}"; }
+bacon() { echo -e "🥓 $*"; }
+
+require_root() {
+    [[ $EUID -eq 0 ]] || { fail "This command requires root. Run with sudo."; exit 1; }
+}
+
+# ── Commands ──────────────────────────────────────────────────────────────────
+
+cmd_update() {
+    step "Updating BaconOS..."
+    sudo apt-get update
+    sudo apt-get upgrade -y
+    sudo apt-get autoremove -y
+    sudo flatpak update -y 2>/dev/null || true
+    ok "System is up to date! 🥓"
+}
+
+cmd_install() {
+    [[ $# -eq 0 ]] && { fail "Usage: bacon install <package>"; exit 1; }
+    step "Installing: $*"
+    sudo apt-get install -y "$@"
+    ok "Installed: $*"
+}
+
+cmd_remove() {
+    [[ $# -eq 0 ]] && { fail "Usage: bacon remove <package>"; exit 1; }
+    step "Removing: $*"
+    sudo apt-get remove -y "$@"
+    sudo apt-get autoremove -y
+    ok "Removed: $*"
+}
+
+cmd_search() {
+    [[ $# -eq 0 ]] && { fail "Usage: bacon search <query>"; exit 1; }
+    step "Searching for: $*"
+    apt-cache search "$@" | head -40
+}
+
+cmd_info() {
+    bacon "BaconOS ${BACONOS_VERSION} \"${BACONOS_CODENAME}\""
+    echo
+    echo -e "  ${BOLD}System Information${RST}"
+    echo -e "  ─────────────────────────────────────"
+    echo -e "  OS:       $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '"')"
+    echo -e "  Kernel:   $(uname -r)"
+    echo -e "  Uptime:   $(uptime -p)"
+    echo -e "  CPU:      $(grep 'model name' /proc/cpuinfo | head -1 | cut -d: -f2 | xargs)"
+    echo -e "  RAM:      $(free -h | awk '/^Mem:/{print $2 " total, " $7 " available"}')"
+    echo -e "  Disk:     $(df -h / | awk 'NR==2{print $2 " total, " $4 " free"}')"
+    echo -e "  Shell:    $SHELL"
+    echo -e "  DE:       ${XDG_CURRENT_DESKTOP:-GNOME}"
+    echo
+    echo -e "  ${YLW}Packages:${RST}"
+    echo -e "  APT:      $(dpkg -l 2>/dev/null | grep ^ii | wc -l) installed"
+    echo -e "  Flatpak:  $(flatpak list 2>/dev/null | wc -l) installed"
+    echo
+}
+
+cmd_theme() {
+    step "Reinstalling BaconShell theme..."
+    bash /usr/lib/baconos/install-theme.sh "${1:-$USER}"
+    ok "Theme applied!"
+}
+
+cmd_doctor() {
+    step "Running BaconOS Doctor..."
+    local issues=0
+
+    # Check internet
+    if ping -c1 -W2 8.8.8.8 &>/dev/null; then
+        ok "Internet connectivity"
+    else
+        warn "No internet connection detected"
+        ((issues++))
+    fi
+
+    # Check disk space
+    local free_kb
+    free_kb=$(df / | awk 'NR==2{print $4}')
+    if [[ $free_kb -gt 2097152 ]]; then
+        ok "Disk space: $(df -h / | awk 'NR==2{print $4}') free"
+    else
+        warn "Low disk space: $(df -h / | awk 'NR==2{print $4}') free"
+        ((issues++))
+    fi
+
+    # Check RAM
+    local free_mb
+    free_mb=$(free -m | awk '/^Mem:/{print $7}')
+    if [[ $free_mb -gt 512 ]]; then
+        ok "Available RAM: ${free_mb}MB"
+    else
+        warn "Low RAM: ${free_mb}MB available"
+        ((issues++))
+    fi
+
+    # Check for pending updates
+    local updates
+    updates=$(apt-get --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
+    if [[ $updates -eq 0 ]]; then
+        ok "System is up to date"
+    else
+        warn "${updates} package updates available (run: bacon update)"
+        ((issues++))
+    fi
+
+    # Check systemd
+    if systemctl is-system-running --quiet 2>/dev/null; then
+        ok "systemd: running"
+    else
+        local state
+        state=$(systemctl is-system-running 2>/dev/null || echo "unknown")
+        warn "systemd state: $state"
+        ((issues++))
+    fi
+
+    # Check failed units
+    local failed
+    failed=$(systemctl --failed --no-legend 2>/dev/null | wc -l)
+    if [[ $failed -eq 0 ]]; then
+        ok "No failed systemd units"
+    else
+        warn "${failed} failed systemd unit(s) — run: systemctl --failed"
+        ((issues++))
+    fi
+
+    echo
+    if [[ $issues -eq 0 ]]; then
+        bacon "All checks passed! BaconOS is sizzling perfectly 🥓"
+    else
+        warn "${issues} issue(s) found. See above for details."
+    fi
+}
+
+cmd_sizzle() {
+    # Easter egg
+    echo
+    echo -e "${YLW}${BOLD}"
+    cat <<'SIZZLE'
+    🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓
+    🥓                                        🥓
+    🥓   ██████╗  █████╗  ██████╗ ██████╗    🥓
+    🥓   ██╔══██╗██╔══██╗██╔════╝██╔═══██╗   🥓
+    🥓   ██████╔╝███████║██║     ██║   ██║   🥓
+    🥓   ██╔══██╗██╔══██║██║     ██║   ██║   🥓
+    🥓   ██████╔╝██║  ██║╚██████╗╚██████╔╝   🥓
+    🥓   ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝    🥓
+    🥓                  OS                    🥓
+    🥓      Stay crispy. Stay curious.        🥓
+    🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓🥓
+SIZZLE
+    echo -e "${RST}"
+    echo -e "  ${CYN}Version:${RST}  BaconOS ${BACONOS_VERSION} \"${BACONOS_CODENAME}\""
+    echo -e "  ${CYN}Based on:${RST} Ubuntu 24.04 LTS"
+    echo -e "  ${CYN}Kernel:${RST}   $(uname -r)"
+    echo -e "  ${CYN}User:${RST}     $USER @ $(hostname)"
+    echo
+}
+
+cmd_help() {
+    bacon "BaconOS CLI — v${BACONOS_VERSION}"
+    echo
+    echo -e "  ${BOLD}Usage:${RST} bacon <command> [options]"
+    echo
+    echo -e "  ${YLW}System${RST}"
+    echo -e "    ${GRN}update${RST}               Update all packages (APT + Flatpak)"
+    echo -e "    ${GRN}install${RST} <pkg>        Install a package"
+    echo -e "    ${GRN}remove${RST}  <pkg>        Remove a package"
+    echo -e "    ${GRN}search${RST}  <query>      Search for packages"
+    echo -e "    ${GRN}info${RST}                 Show system information"
+    echo
+    echo -e "  ${YLW}Maintenance${RST}"
+    echo -e "    ${GRN}doctor${RST}               Run system health check"
+    echo -e "    ${GRN}theme${RST} [user]         Reinstall BaconShell theme"
+    echo
+    echo -e "  ${YLW}Fun${RST}"
+    echo -e "    ${GRN}sizzle${RST}               🥓 Show BaconOS logo"
+    echo -e "    ${GRN}help${RST}                 Show this help"
+    echo
+    echo -e "  ${CYN}Examples:${RST}"
+    echo -e "    bacon update"
+    echo -e "    bacon install neovim"
+    echo -e "    bacon doctor"
+    echo
+}
+
+# ── Main dispatcher ────────────────────────────────────────────────────────────
+main() {
+    local cmd="${1:-help}"
+    shift || true
+
+    case "$cmd" in
+        update)   cmd_update "$@" ;;
+        install)  cmd_install "$@" ;;
+        remove)   cmd_remove "$@" ;;
+        search)   cmd_search "$@" ;;
+        info)     cmd_info ;;
+        theme)    cmd_theme "$@" ;;
+        doctor)   cmd_doctor ;;
+        sizzle)   cmd_sizzle ;;
+        help|--help|-h) cmd_help ;;
+        *)
+            fail "Unknown command: $cmd"
+            echo
+            cmd_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

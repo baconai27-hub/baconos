@@ -1,0 +1,29 @@
+# BaconOS sudoers configuration
+# /etc/sudoers.d/baconos
+# Managed by BaconOS — do not edit manually; use 'visudo -f /etc/sudoers.d/baconos'
+
+# ── Default settings ──────────────────────────────────────────────────────────
+Defaults        env_reset
+Defaults        mail_badpass
+Defaults        secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Defaults        insults
+Defaults        lecture=once
+Defaults        lecture_file=/etc/sudoers.d/baconos-lecture
+Defaults        passwd_timeout=5
+Defaults        timestamp_timeout=15
+Defaults        log_input, log_output
+Defaults        logfile="/var/log/sudo.log"
+
+# ── bacon user full sudo access ───────────────────────────────────────────────
+bacon   ALL=(ALL:ALL) ALL
+
+# ── Passwordless helpers for the bacon CLI ────────────────────────────────────
+# These specific commands can run without password prompt for a smooth UX
+bacon   ALL=(ALL) NOPASSWD: /usr/bin/apt-get update
+bacon   ALL=(ALL) NOPASSWD: /usr/bin/apt-get upgrade -y
+bacon   ALL=(ALL) NOPASSWD: /usr/bin/apt-get autoremove -y
+bacon   ALL=(ALL) NOPASSWD: /usr/lib/baconos/firstboot.sh
+bacon   ALL=(ALL) NOPASSWD: /usr/lib/baconos/install-theme.sh
+bacon   ALL=(ALL) NOPASSWD: /usr/lib/baconos/setup-zram.sh
+bacon   ALL=(ALL) NOPASSWD: /usr/lib/baconos/install-plymouth.sh
+bacon   ALL=(ALL) NOPASSWD: /usr/sbin/update-grub

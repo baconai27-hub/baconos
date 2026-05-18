@@ -1,0 +1,3 @@
+# BaconOS dconf/GNOME profile — /etc/dconf/profile/user
+user-db:user
+system-db:baconos

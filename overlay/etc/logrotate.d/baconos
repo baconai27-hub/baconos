@@ -1,0 +1,27 @@
+# BaconOS logrotate configuration
+# /etc/logrotate.d/baconos
+
+# ── BaconOS application logs ──────────────────────────────────────────────────
+/var/log/baconos-firstboot.log {
+    monthly
+    missingok
+    rotate 3
+    compress
+    delaycompress
+    notifempty
+    create 0640 root adm
+}
+
+/var/log/sudo.log {
+    weekly
+    missingok
+    rotate 8
+    compress
+    delaycompress
+    notifempty
+    create 0640 root adm
+    sharedscripts
+    postrotate
+        /usr/bin/systemctl kill -s HUP rsyslog.service 2>/dev/null || true
+    endscript
+}

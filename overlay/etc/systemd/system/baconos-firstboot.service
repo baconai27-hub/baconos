@@ -1,0 +1,16 @@
+[Unit]
+Description=BaconOS First Boot Setup
+Documentation=https://github.com/baconos/baconos
+After=network-online.target graphical.target gdm.service
+Wants=network-online.target
+ConditionPathExists=!/var/lib/baconos/.firstboot-done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/baconos/firstboot.sh
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=graphical.target

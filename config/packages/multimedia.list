@@ -1,0 +1,24 @@
+# BaconOS Multimedia Package List
+# Includes audio, video, image, and media apps
+
+vlc
+obs-studio
+gimp
+inkscape
+kdenlive
+audacity
+rhythmbox
+totem
+cheese
+eog
+evince
+libreoffice
+libreoffice-gtk3
+transmission-gtk
+gstreamer1.0-plugins-base
+gstreamer1.0-plugins-good
+gstreamer1.0-plugins-bad
+gstreamer1.0-plugins-ugly
+gstreamer1.0-libav
+ffmpeg
+imagemagick
