@@ -3,26 +3,27 @@
 # BaconOS Autoinstall Configuration
 # Used by Ubuntu's subiquity installer for automated/scripted installs
 # =============================================================================
-# Usage: Boot ISO with kernel param: autoinstall ds=nocloud;s=/cdrom/config/autoinstall/
+# Usage: Boot ISO with kernel param:
+#   autoinstall ds=nocloud;s=/cdrom/config/autoinstall/
 # =============================================================================
 
 autoinstall:
   version: 1
 
-  # ── Identity ────────────────────────────────────────────────────────────────
+  # ── Identity ───────────────────────────────
   identity:
     hostname: baconos
     realname: Bacon User
     username: bacon
     password: "$6$rounds=4096$Crispy$..."  # Change this! Use: openssl passwd -6 yourpassword
 
-  # ── Locale ──────────────────────────────────────────────────────────────────
+  # ── Locale ─────────────────────────────────
   locale: en_US.UTF-8
   keyboard:
     layout: us
     variant: ""
 
-  # ── Network ─────────────────────────────────────────────────────────────────
+  # ── Network ────────────────────────────────
   network:
     network:
       version: 2
@@ -34,7 +35,7 @@ autoinstall:
           dhcp6: true
       wifis: {}
 
-  # ── Storage ─────────────────────────────────────────────────────────────────
+  # ── Storage ────────────────────────────────
   storage:
     layout:
       name: lvm
@@ -43,7 +44,7 @@ autoinstall:
     swap:
       size: 0   # BaconOS uses zram swap instead
 
-  # ── APT ─────────────────────────────────────────────────────────────────────
+  # ── APT ────────────────────────────────────
   apt:
     geoip: true
     preserve_sources_list: false
@@ -54,7 +55,7 @@ autoinstall:
       baconos-ppa:
         source: "deb [trusted=yes] https://baconos.github.io/apt stable main"
 
-  # ── Packages ────────────────────────────────────────────────────────────────
+  # ── Packages ───────────────────────────────
   packages:
     - ubuntu-minimal
     - ubuntu-standard
@@ -79,7 +80,7 @@ autoinstall:
     - wget
     - timeshift
 
-  # ── Late commands ────────────────────────────────────────────────────────────
+  # ── Late commands ──────────────────────────
   late-commands:
     # Set default shell to zsh
     - curtin in-target -- chsh -s /usr/bin/zsh bacon
@@ -101,7 +102,10 @@ autoinstall:
     - curtin in-target -- bash -c "echo baconos > /etc/hostname"
 
     # Add Flathub
-    - curtin in-target -- flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+    - |
+      curtin in-target -- flatpak remote-add \
+        --if-not-exists flathub \
+        https://flathub.org/repo/flathub.flatpakrepo
 
     # Enable zram swap
     - curtin in-target -- bash -c "
@@ -109,30 +113,31 @@ autoinstall:
         apt-get install -y systemd-zram-generator 2>/dev/null || true"
 
     # Install Oh My Zsh for default user
-    - curtin in-target --
-        sudo -u bacon bash -c "
-          export RUNZSH=no CHSH=no;
-          sh -c \"\$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" -- --unattended
-        " || true
+    - |
+      curtin in-target -- sudo -u bacon bash -c '
+        export RUNZSH=no CHSH=no
+        URL="https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh"
+        sh -c "$(curl -fsSL $URL)" -- --unattended
+      ' || true
 
     # Copy BaconOS configs
     - cp -r /cdrom/overlay/etc/. /target/etc/   || true
     - cp -r /cdrom/overlay/home/. /target/home/  || true
 
     # Final message
-    - echo "🥓 BaconOS installation complete! Enjoy your crispy new OS."
+    - echo " BaconOS installation complete! Enjoy your crispy new OS."
 
-  # ── User data ────────────────────────────────────────────────────────────────
+  # ── User data ──────────────────────────────
   user-data:
     disable_root: false
 
-  # ── SSH ──────────────────────────────────────────────────────────────────────
+  # ── SSH ────────────────────────────────────
   ssh:
     install-server: false
     allow-pw: true
 
-  # ── Timezone ─────────────────────────────────────────────────────────────────
+  # ── Timezone ───────────────────────────────
   timezone: UTC
 
-  # ── Updates ─────────────────────────────────────────────────────────────────
+  # ── Updates ────────────────────────────────
   updates: security
